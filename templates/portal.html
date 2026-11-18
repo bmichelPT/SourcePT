@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Situação financeira · Portal Escolar{% endblock %}
+{% block body %}
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="{{ url_for('portal') }}"><span class="mark" aria-hidden="true">P</span> Portal Escolar</a>
+    <form method="post" action="{{ url_for('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="secondary" type="submit">Terminar sessão</button>
+    </form>
+  </div>
+</header>
+<main class="dashboard">
+  <div class="intro">
+    <div>
+      <p class="eyebrow">{% if account.admin %}Área da secretaria{% else %}Área do encarregado de educação{% endif %}</p>
+      <h1>Situação financeira</h1>
+    </div>
+    {% if student %}
+    <a class="secondary" href="{{ url_for('portal', student_id=student.id) }}">Atualizar dados</a>
+    {% endif %}
+  </div>
+  {% for message in get_flashed_messages() %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+  {% if student %}
+    <section class="student">
+      <span class="avatar" aria-hidden="true">{{ student.name[0]|upper }}</span>
+      <div><h2>{{ student.name }}</h2><p>Referência {{ student.reference }}</p></div>
+    </section>
+    {% if students|length > 1 %}
+    <nav class="students" aria-label="Selecionar aluno">
+      {% for item in students %}
+      <a href="{{ url_for('portal', student_id=item.id) }}"{% if item.id == student.id %} aria-current="page"{% endif %}>{{ item.name }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+    <div class="financial" id="financial">
+    <section class="summary" aria-label="Resumo financeiro">
+      <div class="balance"><span>{{ 'Valor em dívida' if balance > 0 else 'Crédito disponível' if balance < 0 else 'Saldo atual' }}</span><strong>{{ (balance|abs)|eur }}</strong></div>
+      <div><span>Total de cobranças</span><strong>{{ charged|eur }}</strong></div>
+      <div><span>Total pago</span><strong>{{ paid|eur }}</strong></div>
+    </section>
+    <section class="card">
+      <h2>Movimentos</h2>
+      {% if entries %}
+      <ul class="ledger">
+        {% for item in entries %}
+        <li>
+          <div><strong>{{ item.description }}</strong><small>{{ item.day.strftime('%d/%m/%Y') }} · {{ 'Pagamento' if item.kind == 'payment' else 'Cobrança' }}</small></div>
+          <span class="{{ item.kind }}">{{ item.amount|eur }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p>Este aluno ainda não tem movimentos registados.</p>{% endif %}
+    </section>
+    </div>
+    {% if not account.admin %}<script src="{{ url_for('static', filename='refresh.js') }}" defer></script>{% endif %}
+    {% if account.admin %}
+    <section class="card">
+      <h2>Registar movimento</h2>
+      <form class="entry-form" method="post" action="{{ url_for('add_entry', student_id=student.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="submission" value="{{ submission }}">
+        <label>Tipo <select name="kind"><option value="charge">Cobrança</option><option value="payment">Pagamento</option></select></label>
+        <label>Descrição <input name="description" maxlength="140" required></label>
+        <label>Data <input name="day" type="date" value="{{ today }}" required></label>
+        <label>Valor em euros <input name="amount" type="text" inputmode="decimal" maxlength="13" required></label>
+        <button class="primary" type="submit">Registar movimento</button>
+      </form>
+    </section>
+    {% endif %}
+  {% else %}
+    <section class="card"><h2>Sem alunos associados</h2><p>{{ 'Adicione o primeiro aluno para começar a registar movimentos.' if account.admin else 'Contacte a secretaria para associar um aluno à sua conta.' }}</p></section>
+  {% endif %}
+</main>
+{% endblock %}
+
