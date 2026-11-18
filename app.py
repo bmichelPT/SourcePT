@@ -243,3 +243,31 @@ def add_student(reference, name, guardian_email):
         guardian.students.append(student)
     db.session.commit()
 
+def ensure_test_admin():
+    password = os.environ.get("SOURCEPT_TEST_ADMIN_PASSWORD")
+    if password is None:
+        return
+    if not 12 <= len(password) <= 256:
+        raise RuntimeError("SOURCEPT_TEST_ADMIN_PASSWORD deve ter 12 a 256 caracteres.")
+
+    email = "secretaria@example.org"
+    accounts = Account.__table__
+    with app.app_context(), db.engine.begin() as connection:
+        if connection.dialect.name == "postgresql":
+            # Serialize bootstrap across workers and overlapping deploys.
+            connection.execute(db.text("SELECT pg_advisory_xact_lock(53170, 1)"))
+        db.metadata.create_all(connection)
+        existing = connection.execute(
+            select(accounts.c.admin).where(accounts.c.email == email)
+        ).scalar_one_or_none()
+        if existing is False:
+            raise RuntimeError("O email da conta de teste já pertence a uma conta sem permissões de administração.")
+        if existing is None:
+            connection.execute(
+                accounts.insert().values(
+                    email=email, password_hash=generate_password_hash(password), admin=True
+                )
+            )
+
+
+ensure_test_admin()
