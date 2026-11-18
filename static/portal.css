@@ -56,4 +56,4 @@ button,.secondary{min-height:44px;border-radius:.65rem;padding:.65rem .95rem;cur
 @media(max-width:380px){.entry-form{grid-template-columns:1fr}.top-inner .brand{font-size:.9rem}}
 
 .financial{display:grid;gap:1.1rem}
-
+.office-actions{display:flex;flex-wrap:wrap;gap:.5rem}

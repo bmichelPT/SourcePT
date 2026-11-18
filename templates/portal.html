@@ -17,7 +17,10 @@
       <h1>Situação financeira</h1>
     </div>
     {% if account.admin %}
-    <a class="secondary" href="#novo-aluno">Criar aluno</a>
+    <div class="office-actions">
+      <a class="secondary" href="#novo-aluno">Criar aluno</a>
+      <a class="secondary" href="#novo-encarregado">Registar encarregado</a>
+    </div>
     {% elif student %}
     <a class="secondary" href="{{ url_for('portal', student_id=student.id) }}">Atualizar dados</a>
     {% endif %}
@@ -37,6 +40,26 @@
         {% endfor %}
       </select></label>
       <button class="primary" type="submit">Criar aluno</button>
+    </form>
+  </section>
+  <section class="card" id="novo-encarregado">
+    <h2>Registar encarregado</h2>
+    <form class="entry-form" method="post" action="{{ url_for('create_guardian') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Email <input name="email" type="email" autocomplete="off" maxlength="254" required></label>
+      <label>Aluno <select name="student_id">
+        <option value="">Associar mais tarde</option>
+        {% for item in students %}
+        <option value="{{ item.id }}">{{ item.name }} · {{ item.reference }}</option>
+        {% endfor %}
+      </select></label>
+      <label>Palavra-passe (mínimo de 12 caracteres)
+        <input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required>
+      </label>
+      <label>Confirmar palavra-passe
+        <input name="confirm_password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required>
+      </label>
+      <button class="primary" type="submit">Registar encarregado</button>
     </form>
   </section>
   {% endif %}

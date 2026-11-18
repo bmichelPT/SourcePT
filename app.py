@@ -171,6 +171,55 @@ def portal(account, student_id=None):
     )
 
 
+@app.post("/encarregados")
+@signed_in
+def create_guardian(account):
+    if not account.admin:
+        abort(403)
+
+    form_url = url_for("portal", _anchor="novo-encarregado")
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+    local, separator, domain = email.partition("@")
+    if (
+        not separator or not local or not domain or "@" in domain
+        or len(email) > 254 or any(char.isspace() for char in email)
+    ):
+        flash("Indique um endereço de email válido.")
+        return redirect(form_url, code=303)
+    if not 12 <= len(password) <= 256:
+        flash("A palavra-passe deve ter entre 12 e 256 caracteres.")
+        return redirect(form_url, code=303)
+    if password != request.form.get("confirm_password"):
+        flash("As palavras-passe não coincidem.")
+        return redirect(form_url, code=303)
+
+    student = None
+    if request.form.get("student_id"):
+        student_id = request.form.get("student_id", type=int)
+        if student_id is not None and 0 < student_id <= 2147483647:
+            student = db.session.get(Student, student_id)
+        if student is None:
+            flash("Selecione um aluno válido.")
+            return redirect(form_url, code=303)
+
+    guardian = Account(email=email, password_hash=generate_password_hash(password), admin=False)
+    if student is not None:
+        guardian.students.append(student)
+    db.session.add(guardian)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        if db.session.scalar(select(Account.id).where(Account.email == email)) is None:
+            raise
+        flash("Já existe uma conta com este email.")
+        return redirect(form_url, code=303)
+
+    flash("Conta de encarregado criada com sucesso.")
+    return redirect(url_for("portal", student_id=student.id if student else None, _anchor="novo-encarregado"), code=303)
+
+
 @app.post("/alunos")
 @signed_in
 def create_student(account):
