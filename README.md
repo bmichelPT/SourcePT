@@ -1,6 +1,6 @@
 # Portal Escolar · SourcePT
 
-Portal financeiro em português de Portugal. Os encarregados consultam os alunos associados à sua conta, o saldo e o histórico de cobranças e pagamentos. Os dados são consultados ao abrir a página, atualizados a cada 15 segundos enquanto o separador está visível e podem ser atualizados de imediato através de **Atualizar dados**. A secretaria regista os movimentos no próprio portal.
+Portal financeiro em português de Portugal. Os encarregados consultam os alunos associados à sua conta, o saldo e o histórico de cobranças e pagamentos. Os dados são consultados ao abrir a página, atualizados a cada 15 segundos enquanto o separador está visível e podem ser atualizados de imediato através de **Atualizar dados**. A secretaria cria alunos, pode associá-los a encarregados com conta existente e regista os movimentos no próprio portal.
 
 ## Executar localmente
 

@@ -16,11 +16,30 @@
       <p class="eyebrow">{% if account.admin %}Área da secretaria{% else %}Área do encarregado de educação{% endif %}</p>
       <h1>Situação financeira</h1>
     </div>
-    {% if student %}
+    {% if account.admin %}
+    <a class="secondary" href="#novo-aluno">Criar aluno</a>
+    {% elif student %}
     <a class="secondary" href="{{ url_for('portal', student_id=student.id) }}">Atualizar dados</a>
     {% endif %}
   </div>
   {% for message in get_flashed_messages() %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+  {% if account.admin %}
+  <section class="card" id="novo-aluno">
+    <h2>Criar aluno</h2>
+    <form class="entry-form" method="post" action="{{ url_for('create_student') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Nome completo <input name="name" maxlength="120" required></label>
+      <label>Referência ou número de aluno <input name="reference" maxlength="40" required></label>
+      <label>Encarregado de educação <select name="guardian_id">
+        <option value="">Associar mais tarde</option>
+        {% for guardian in available_guardians %}
+        <option value="{{ guardian.id }}">{{ guardian.email }}</option>
+        {% endfor %}
+      </select></label>
+      <button class="primary" type="submit">Criar aluno</button>
+    </form>
+  </section>
+  {% endif %}
   {% if student %}
     <section class="student">
       <span class="avatar" aria-hidden="true">{{ student.name[0]|upper }}</span>
@@ -73,4 +92,3 @@
   {% endif %}
 </main>
 {% endblock %}
-

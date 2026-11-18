@@ -9,6 +9,7 @@ import click
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -142,8 +143,12 @@ def logout():
 @app.get("/aluno/<int:student_id>")
 @signed_in
 def portal(account, student_id=None):
+    available_guardians = []
     if account.admin:
         students = db.session.scalars(select(Student).order_by(Student.name, Student.id)).all()
+        available_guardians = db.session.scalars(
+            select(Account).where(Account.admin.is_(False)).order_by(Account.email)
+        ).all()
     else:
         students = sorted(account.students, key=lambda student: (student.name, student.id))
     student = next((item for item in students if item.id == student_id), None)
@@ -162,8 +167,48 @@ def portal(account, student_id=None):
     return render_template(
         "portal.html", account=account, students=students, student=student, entries=entries,
         charged=charged, paid=paid, balance=charged - paid, today=date.today().isoformat(),
-        submission=token_urlsafe(32),
+        submission=token_urlsafe(32), available_guardians=available_guardians,
     )
+
+
+@app.post("/alunos")
+@signed_in
+def create_student(account):
+    if not account.admin:
+        abort(403)
+
+    reference = request.form.get("reference", "").strip()
+    name = request.form.get("name", "").strip()
+    guardian_id = request.form.get("guardian_id", "").strip()
+    if not 1 <= len(reference) <= 40 or not 1 <= len(name) <= 120:
+        flash("Indique o nome e a referência do aluno.")
+        return redirect(url_for("portal", _anchor="novo-aluno"), code=303)
+
+    guardian = None
+    if guardian_id:
+        if guardian_id.isascii() and guardian_id.isdecimal() and len(guardian_id) <= 10:
+            valid_id = int(guardian_id)
+            if 0 < valid_id <= 2147483647:
+                guardian = db.session.get(Account, valid_id)
+        if guardian is None or guardian.admin:
+            flash("Selecione um encarregado de educação válido.")
+            return redirect(url_for("portal", _anchor="novo-aluno"), code=303)
+
+    student = Student(reference=reference, name=name)
+    if guardian is not None:
+        guardian.students.append(student)
+    db.session.add(student)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        if db.session.scalar(select(Student.id).where(Student.reference == reference)) is None:
+            raise
+        flash("Já existe um aluno com esta referência.")
+        return redirect(url_for("portal", _anchor="novo-aluno"), code=303)
+
+    flash("Aluno criado com sucesso.")
+    return redirect(url_for("portal", student_id=student.id), code=303)
 
 
 @app.post("/aluno/<int:student_id>/movimentos")
@@ -185,8 +230,6 @@ def add_entry(account, student_id):
     if not valid_amount or not 1 <= len(description) <= 140 or kind not in {"charge", "payment"} or len(submission) != 43:
         flash("Verifique o tipo, a descrição, a data e o valor do movimento.")
     else:
-        from sqlalchemy.exc import IntegrityError
-
         try:
             db.session.add(Entry(student_id=student_id, kind=kind, description=description,
                                  amount=amount, day=day, submission=submission))
